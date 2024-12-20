@@ -77,3 +77,4 @@ tgsafelister ist ein Telegram-Bot, der es ermöglicht, User auf eine Safelist od
 
 ## Plattform
 - Läuft auf einem Raspberry Pi.
+- Sprache python
