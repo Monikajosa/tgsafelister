@@ -21,6 +21,9 @@ with open('en.json', 'r') as f:
 # Set default language to German
 language = lang_de
 
+# Dictionary to store user languages
+user_languages = {}
+
 def get_db_connection():
     conn = sqlite3.connect('users.db')
     return conn
@@ -28,90 +31,99 @@ def get_db_connection():
 def set_language(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    global language
+    user_id = query.from_user.id
     language_code = query.data.split('_')[1]
     if language_code == 'de':
-        language = lang_de
+        user_languages[user_id] = lang_de
     else:
-        language = lang_en
-    query.edit_message_text(text=language["language_set"].format(language=language_code.capitalize()))
+        user_languages[user_id] = lang_en
+    query.edit_message_text(text=user_languages[user_id]["language_set"].format(language=language_code.capitalize()))
     main_menu(update, context)
 
 def start(update: Update, context: CallbackContext) -> None:
     chat_type = update.message.chat.type
+    user_id = update.message.from_user.id
+    if user_id not in user_languages:
+        user_languages[user_id] = language
     if chat_type == 'private':
-        update.message.reply_text(language["welcome"], reply_markup=main_menu_keyboard())
+        update.message.reply_text(user_languages[user_id]["welcome"], reply_markup=main_menu_keyboard(user_id))
     else:
-        update.message.reply_text(language["private_chat_only"])
+        update.message.reply_text(user_languages[user_id]["private_chat_only"])
 
-def main_menu_keyboard():
-    keyboard = [
-        [InlineKeyboardButton(language['safelist_button'], callback_data='safelist')],
-        [InlineKeyboardButton(language['blacklist_button'], callback_data='blacklist')],
-        [InlineKeyboardButton(language['report_button'], callback_data='create_report')],
-        [InlineKeyboardButton(language['language_button'], callback_data='choose_language')],
-        [InlineKeyboardButton(language['support_button'], callback_data='support')],
-    ]
-    return InlineKeyboardMarkup(keyboard)
+def main_menu_keyboard(user_id):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(user_languages[user_id]['safelist_button'], callback_data='safelist')],
+        [InlineKeyboardButton(user_languages[user_id]['blacklist_button'], callback_data='blacklist')],
+        [InlineKeyboardButton(user_languages[user_id]['report_button'], callback_data='create_report')],
+        [InlineKeyboardButton(user_languages[user_id]['language_button'], callback_data='choose_language')],
+        [InlineKeyboardButton(user_languages[user_id]['support_button'], callback_data='support')],
+    ])
 
 def main_menu(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text=language["main_menu"], reply_markup=main_menu_keyboard())
+    user_id = query.from_user.id
+    query.edit_message_text(text=user_languages[user_id]["main_menu"], reply_markup=main_menu_keyboard(user_id))
 
 def safelist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    user_id = query.from_user.id
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT * FROM safeuser')
     safe_users = c.fetchall()
-    response = language["safelist"] + "\n"
+    response = user_languages[user_id]["safelist"] + "\n"
     for user in safe_users:
         if user[3]:  # Benutzername vorhanden
             response += f"Name: [{user[2]}](https://t.me/{user[3]}), ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
         else:  # Kein Benutzername, stattdessen Benutzer-ID verwenden
             response += f"Name: [{user[2]}](https://t.me/{user[1]}), ID: {user[1]}, Profil: [Profil anzeigen](https://t.me/{user[1]}), Meldungen: {user[4]}\n"
     conn.close()
-    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(user_id), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def blacklist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    user_id = query.from_user.id
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT * FROM scamer')
     scamer_users = c.fetchall()
-    response = language["blacklist"] + "\n"
+    response = user_languages[user_id]["blacklist"] + "\n"
     for user in scamer_users:
         if user[3]:  # Benutzername vorhanden
             response += f"Name: [{user[2]}](https://t.me/{user[3]}), ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
         else:  # Kein Benutzername, stattdessen Benutzer-ID verwenden
             response += f"Name: [{user[2]}](https://t.me/{user[1]}), ID: {user[1]}, Profil: [Profil anzeigen](https://t.me/{user[1]}), Meldungen: {user[4]}\n"
     conn.close()
-    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(user_id), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def create_report(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    query.edit_message_text(language["forward_message"])
+    user_id = query.from_user.id
+    query.edit_message_text(user_languages[user_id]["forward_message"])
 
 def choose_language(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    user_id = query.from_user.id
     keyboard = [
         [InlineKeyboardButton('Deutsch', callback_data='language_de')],
         [InlineKeyboardButton('English', callback_data='language_en')],
     ]
-    query.edit_message_text(text=language["choose_language"], reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text(text=user_languages[user_id]["choose_language"], reply_markup=InlineKeyboardMarkup(keyboard))
 
 def support(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text=language["support"])
+    user_id = query.from_user.id
+    query.edit_message_text(text=user_languages[user_id]["support"])
 
 def handle_forwarded_message(update: Update, context: CallbackContext):
     forwarded_from = update.message.forward_from
+    user_id = update.message.from_user.id
     if forwarded_from:
         reported_id = forwarded_from.id
         reported_username = forwarded_from.username
@@ -122,16 +134,17 @@ def handle_forwarded_message(update: Update, context: CallbackContext):
         context.user_data['reported_name'] = reported_name
 
         keyboard = [
-            [InlineKeyboardButton(language['safelist_button'], callback_data='report_safelist')],
-            [InlineKeyboardButton(language['blacklist_button'], callback_data='report_blacklist')],
+            [InlineKeyboardButton(user_languages[user_id]['safelist_button'], callback_data='report_safelist')],
+            [InlineKeyboardButton(user_languages[user_id]['blacklist_button'], callback_data='report_blacklist')],
         ]
-        update.message.reply_text(language["choose_list"], reply_markup=InlineKeyboardMarkup(keyboard))
+        update.message.reply_text(user_languages[user_id]["choose_list"], reply_markup=InlineKeyboardMarkup(keyboard))
     else:
-        update.message.reply_text(language["invalid_forward_message"])
+        update.message.reply_text(user_languages[user_id]["invalid_forward_message"])
 
 def report_safelist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    user_id = query.from_user.id
     reported_id = context.user_data['reported_id']
     reported_username = context.user_data['reported_username']
     reported_name = context.user_data['reported_name']
@@ -143,12 +156,13 @@ def report_safelist(update: Update, context: CallbackContext):
     c.execute('UPDATE safeuser SET countsafelist = countsafelist + 1 WHERE user_id = ?', (reported_id,))
     conn.commit()
     conn.close()
-    query.edit_message_text(text=language["report_success"].format(list=language["safelist_button"]))
+    query.edit_message_text(text=user_languages[user_id]["report_success"].format(list=user_languages[user_id]["safelist_button"]))
     return main_menu(update, context)
 
 def report_blacklist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    user_id = query.from_user.id
     reported_id = context.user_data['reported_id']
     reported_username = context.user_data['reported_username']
     reported_name = context.user_data['reported_name']
@@ -160,13 +174,17 @@ def report_blacklist(update: Update, context: CallbackContext):
     c.execute('UPDATE scamer SET countscamer = countscamer + 1 WHERE user_id = ?', (reported_id,))
     conn.commit()
     conn.close()
-    query.edit_message_text(text=language["report_success"].format(list=language["blacklist_button"]))
+    query.edit_message_text(text=user_languages[user_id]["report_success"].format(list=user_languages[user_id]["blacklist_button"]))
     return main_menu(update, context)
 
 def handle_support_message(update: Update, context: CallbackContext):
-    message = update.message.text
-    user_id = update.message.from_user.id
-    context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=f"Support-Anfrage von {user_id}:\n\n{message}")
+    message = update.message.reply_to_message
+    if message and message.forward_from:
+        original_user_id = message.forward_from.id
+        context.bot.send_message(chat_id=original_user_id, text=update.message.text)
+    else:
+        user_id = update.message.from_user.id
+        context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=f"Support-Anfrage von {user_id}:\n\n{update.message.text}")
 
 def delete_user(update: Update, context: CallbackContext):
     user_id = context.args[0]
@@ -184,11 +202,12 @@ def send_message(update: Update, context: CallbackContext):
         context.bot.send_message(chat_id=chat_id, text=message)
 
 def group_safelist(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT * FROM safeuser')
     safe_users = c.fetchall()
-    response = language["safelist"] + "\n"
+    response = user_languages[user_id]["safelist"] + "\n"
     for user in safe_users:
         if user[3]:  # Benutzername vorhanden
             response += f"Name: [{user[2]}](https://t.me/{user[3]}), ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
@@ -198,11 +217,12 @@ def group_safelist(update: Update, context: CallbackContext):
     update.message.reply_text(text=response, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def group_blacklist(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT * FROM scamer')
     scamer_users = c.fetchall()
-    response = language["blacklist"] + "\n"
+    response = user_languages[user_id]["blacklist"] + "\n"
     for user in scamer_users:
         if user[3]:  # Benutzername vorhanden
             response += f"Name: [{user[2]}](https://t.me/{user[3]}), ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
@@ -234,6 +254,7 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(report_safelist, pattern='report_safelist'))
     dispatcher.add_handler(CallbackQueryHandler(report_blacklist, pattern='report_blacklist'))
     dispatcher.add_handler(CallbackQueryHandler(choose_language, pattern='choose_language'))
+    dispatcher.add_handler(CallbackQueryHandler(set_language, pattern='language_'))
     dispatcher.add_handler(CallbackQueryHandler(support, pattern='support'))
 
     # Message handler for forwarded messages
