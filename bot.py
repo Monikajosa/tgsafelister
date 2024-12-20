@@ -15,7 +15,7 @@ SUPPORT_GROUP_ID = os.getenv("SUPPORT_GROUP_ID")
 # Load language files
 with open('de.json', 'r') as f:
     lang_de = json.load(f)
-with open('en.json', 'r') as f:
+with open('en.json', 'r') as f)
     lang_en = json.load(f)
 
 # Set default language to German
@@ -86,7 +86,7 @@ def blacklist(update: Update, context: CallbackContext):
     conn.close()
     query.edit_message_text(text=response, reply_markup=main_menu_keyboard())
 
-def request_user(update: Update, context: CallbackContext):
+def create_report(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     query.edit_message_text(
