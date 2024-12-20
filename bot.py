@@ -179,12 +179,15 @@ def report_blacklist(update: Update, context: CallbackContext):
     return main_menu(update, context)
 
 def handle_support_message(update: Update, context: CallbackContext):
-    message = update.message.reply_to_message
-    user_id = update.message.from_user.id
-    if message and message.message_id in support_message_mapping:
-        original_user_id = support_message_mapping[message.message_id]
-        context.bot.send_message(chat_id=original_user_id, text=update.message.text)
+    if update.message.chat_id == int(SUPPORT_GROUP_ID):
+        # Message is from the support group
+        if update.message.reply_to_message and update.message.reply_to_message.message_id in support_message_mapping:
+            original_user_id = support_message_mapping[update.message.reply_to_message.message_id]
+            context.bot.send_message(chat_id=original_user_id, text=update.message.text)
+        else:
+            context.bot.send_message(chat_id=update.message.chat_id, text="Keine zugeordnete Support-Anfrage gefunden.")
     else:
+        # Message is from a user
         user_id = update.message.from_user.id
         sent_message = context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=f"Support-Anfrage von {user_id}:\n\n{update.message.text}")
         support_message_mapping[sent_message.message_id] = user_id
@@ -262,7 +265,7 @@ def main():
 
     # Message handler for forwarded messages
     dispatcher.add_handler(MessageHandler(Filters.forwarded & Filters.chat_type.private, handle_forwarded_message))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_support_message))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_support_message))
 
     updater.start_polling()
     updater.idle()
