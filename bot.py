@@ -15,7 +15,7 @@ SUPPORT_GROUP_ID = os.getenv("SUPPORT_GROUP_ID")
 # Load language files
 with open('de.json', 'r') as f:
     lang_de = json.load(f)
-with open('en.json', 'r') as f)
+with open('en.json', 'r') as f:  # <-- Syntaxfehler korrigiert
     lang_en = json.load(f)
 
 # Set default language to German
