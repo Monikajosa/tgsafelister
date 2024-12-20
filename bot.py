@@ -69,9 +69,12 @@ def safelist(update: Update, context: CallbackContext):
     safe_users = c.fetchall()
     response = language["safelist"] + "\n"
     for user in safe_users:
-        response += f"Name: {user[2]}, ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
+        if user[3]:  # Benutzername vorhanden
+            response += f"Name: [{user[2]}](https://t.me/{user[3]}), ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
+        else:  # Kein Benutzername, stattdessen Benutzer-ID verwenden
+            response += f"Name: [{user[2]}](https://t.me/{user[1]}), ID: {user[1]}, Profil: [Profil anzeigen](https://t.me/{user[1]}), Meldungen: {user[4]}\n"
     conn.close()
-    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN)
+    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def blacklist(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -82,9 +85,12 @@ def blacklist(update: Update, context: CallbackContext):
     scamer_users = c.fetchall()
     response = language["blacklist"] + "\n"
     for user in scamer_users:
-        response += f"Name: {user[2]}, ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
+        if user[3]:  # Benutzername vorhanden
+            response += f"Name: [{user[2]}](https://t.me/{user[3]}), ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
+        else:  # Kein Benutzername, stattdessen Benutzer-ID verwenden
+            response += f"Name: [{user[2]}](https://t.me/{user[1]}), ID: {user[1]}, Profil: [Profil anzeigen](https://t.me/{user[1]}), Meldungen: {user[4]}\n"
     conn.close()
-    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN)
+    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def create_report(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -194,9 +200,12 @@ def group_safelist(update: Update, context: CallbackContext):
     safe_users = c.fetchall()
     response = language["safelist"] + "\n"
     for user in safe_users:
-        response += f"Name: {user[2]}, ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
+        if user[3]:  # Benutzername vorhanden
+            response += f"Name: [{user[2]}](https://t.me/{user[3]}), ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
+        else:  # Kein Benutzername, stattdessen Benutzer-ID verwenden
+            response += f"Name: [{user[2]}](https://t.me/{user[1]}), ID: {user[1]}, Profil: [Profil anzeigen](https://t.me/{user[1]}), Meldungen: {user[4]}\n"
     conn.close()
-    update.message.reply_text(text=response, parse_mode=ParseMode.MARKDOWN)
+    update.message.reply_text(text=response, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def group_blacklist(update: Update, context: CallbackContext):
     conn = get_db_connection()
@@ -205,9 +214,12 @@ def group_blacklist(update: Update, context: CallbackContext):
     scamer_users = c.fetchall()
     response = language["blacklist"] + "\n"
     for user in scamer_users:
-        response += f"Name: {user[2]}, ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
+        if user[3]:  # Benutzername vorhanden
+            response += f"Name: [{user[2]}](https://t.me/{user[3]}), ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
+        else:  # Kein Benutzername, stattdessen Benutzer-ID verwenden
+            response += f"Name: [{user[2]}](https://t.me/{user[1]}), ID: {user[1]}, Profil: [Profil anzeigen](https://t.me/{user[1]}), Meldungen: {user[4]}\n"
     conn.close()
-    update.message.reply_text(text=response, parse_mode=ParseMode.MARKDOWN)
+    update.message.reply_text(text=response, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def main():
     updater = Updater(TOKEN, use_context=True)
