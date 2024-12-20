@@ -44,7 +44,10 @@ def set_language(update: Update, context: CallbackContext):
     main_menu(update, context)
 
 def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(language["welcome"], reply_markup=main_menu_keyboard())
+    if update.message.chat.type == 'private':
+        update.message.reply_text(language["welcome"], reply_markup=main_menu_keyboard())
+    else:
+        update.message.reply_text("Dieser Befehl ist nur im privaten Chat verfügbar.")
 
 def main_menu_keyboard():
     keyboard = [
@@ -158,16 +161,36 @@ def send_message(update: Update, context: CallbackContext):
     for chat_id in context.bot_data['active_chats']:
         context.bot.send_message(chat_id=chat_id, text=message)
 
+def group_safelist(update: Update, context: CallbackContext):
+    c.execute('SELECT * FROM safeuser')
+    safe_users = c.fetchall()
+    response = language["safelist"] + "\n"
+    for user in safe_users:
+        response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+    update.message.reply_text(text=response)
+
+def group_blacklist(update: Update, context: CallbackContext):
+    c.execute('SELECT * FROM scamer')
+    scamer_users = c.fetchall()
+    response = language["blacklist"] + "\n"
+    for user in scamer_users:
+        response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+    update.message.reply_text(text=response)
+
 def main():
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
-    # Command handlers
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("safelist", safelist))
-    dispatcher.add_handler(CommandHandler("blacklist", blacklist))
-    dispatcher.add_handler(CommandHandler("del", delete_user, pass_args=True))
-    dispatcher.add_handler(CommandHandler("send", send_message, pass_args=True))
+    # Command handlers for private chat
+    dispatcher.add_handler(CommandHandler("start", start, filters=Filters.private))
+    
+    # Command handlers for groups
+    dispatcher.add_handler(CommandHandler("safelist", group_safelist, filters=Filters.group))
+    dispatcher.add_handler(CommandHandler("blacklist", group_blacklist, filters=Filters.group))
+
+    # Admin command handlers for group
+    dispatcher.add_handler(CommandHandler("del", delete_user, filters=Filters.group, pass_args=True))
+    dispatcher.add_handler(CommandHandler("send", send_message, filters=Filters.group, pass_args=True))
 
     # Callback query handler
     dispatcher.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
@@ -179,9 +202,9 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(choose_language, pattern='choose_language'))
     dispatcher.add_handler(CallbackQueryHandler(set_language, pattern='language_'))
 
-    # Message handler
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_report))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_support_message))
+    # Message handler for private chat
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.private, handle_report))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.private, handle_support_message))
 
     updater.start_polling()
     updater.idle()
