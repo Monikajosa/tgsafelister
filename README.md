@@ -70,6 +70,7 @@ tgsafelister ist ein Telegram-Bot, der es ermöglicht, User auf eine Safelist od
 - Hauptmenü wie oben beschrieben.
 
 ## Support-Gruppe
+- wird in der .env definiert damit der Bot für den Support ausschließlich dort reagiert
 - Nachrichten, die über den Bot übermittelt werden, erscheinen in einer privaten Gruppe. Per Reply kann den User geantwortet werden und die Antwort wird zurück an den Bot Chat übermittelt.
 - Bot reagiert auf Befehle in der privaten Gruppe:
   - `/del 'ID'` löscht alle Einträge mit dieser ID.
