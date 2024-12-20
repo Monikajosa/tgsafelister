@@ -107,15 +107,32 @@ def handle_user_input(update: Update, context: CallbackContext):
     # Prüfen, ob die Eingabe eine Benutzer-ID ist
     if user_input.isdigit():
         reported_id = int(user_input)
+        reported_username = None
     # Prüfen, ob die Eingabe ein @Benutzername ist
     elif user_input.startswith('@'):
-        reported_id = user_input
-    # Andernfalls Fehlermeldung
+        reported_username = user_input[1:]  # Entfernen des '@'
+        reported_id = None
     else:
         update.message.reply_text("Ungültige Eingabe. Bitte geben Sie eine gültige Benutzer-ID oder einen @Benutzernamen ein.")
         return
 
+    # Informationen über den Benutzer abrufen
+    if reported_id:
+        chat_member = context.bot.get_chat_member(chat_id=update.message.chat.id, user_id=reported_id)
+    elif reported_username:
+        chat_member = context.bot.get_chat_member(chat_id=update.message.chat.id, user_id=reported_username)
+
+    if chat_member:
+        reported_id = chat_member.user.id
+        reported_username = chat_member.user.username
+        reported_name = chat_member.user.full_name
+    else:
+        reported_name = None
+
     context.user_data['reported_id'] = reported_id
+    context.user_data['reported_username'] = reported_username
+    context.user_data['reported_name'] = reported_name
+
     keyboard = [
         [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
         [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
@@ -126,7 +143,13 @@ def handle_forwarded_message(update: Update, context: CallbackContext):
     forwarded_from = update.message.forward_from
     if forwarded_from:
         reported_id = forwarded_from.id
+        reported_username = forwarded_from.username
+        reported_name = forwarded_from.full_name
+
         context.user_data['reported_id'] = reported_id
+        context.user_data['reported_username'] = reported_username
+        context.user_data['reported_name'] = reported_name
+
         keyboard = [
             [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
             [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
@@ -139,11 +162,13 @@ def report_safelist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     reported_id = context.user_data['reported_id']
+    reported_username = context.user_data['reported_username']
+    reported_name = context.user_data['reported_name']
     reporter_id = update.callback_query.from_user.id
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('INSERT INTO reports (reporter_id, reported_id, report_type) VALUES (?, ?, ?)', (reporter_id, reported_id, 'safeuser'))
-    c.execute('INSERT OR IGNORE INTO safeuser (user_id, countsafelist) VALUES (?, 0)', (reported_id,))
+    c.execute('INSERT OR IGNORE INTO safeuser (user_id, countsafelist, username, name) VALUES (?, 0, ?, ?)', (reported_id, reported_username, reported_name))
     c.execute('UPDATE safeuser SET countsafelist = countsafelist + 1 WHERE user_id = ?', (reported_id,))
     conn.commit()
     conn.close()
@@ -154,11 +179,13 @@ def report_blacklist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     reported_id = context.user_data['reported_id']
+    reported_username = context.user_data['reported_username']
+    reported_name = context.user_data['reported_name']
     reporter_id = update.callback_query.from_user.id
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('INSERT INTO reports (reporter_id, reported_id, report_type) VALUES (?, ?, ?)', (reporter_id, reported_id, 'scamer'))
-    c.execute('INSERT OR IGNORE INTO scamer (user_id, countscamer) VALUES (?, 0)', (reported_id,))
+    c.execute('INSERT OR IGNORE INTO scamer (user_id, countscamer, username, name) VALUES (?, 0, ?, ?)', (reported_id, reported_username, reported_name))
     c.execute('UPDATE scamer SET countscamer = countscamer + 1 WHERE user_id = ?', (reported_id,))
     conn.commit()
     conn.close()
