@@ -1,0 +1,13 @@
+{
+    "welcome": "Welcome to the Telegram Bot! Please choose an option from the menu:",
+    "main_menu": "Please choose an option from the main menu:",
+    "safelist": "Safelist:",
+    "blacklist": "Blacklist:",
+    "create_report": "Please enter the ID of the user you want to report:",
+    "report_success": "User successfully added to the {list}.",
+    "choose_language": "Please choose a language:",
+    "support": "Support:\n\nPlease describe your problem. A support representative will get back to you as soon as possible.",
+    "self_report_error": "You cannot report yourself.",
+    "duplicate_report_error": "You have already reported this user in the last 24 hours.",
+    "language_set": "Language set to {language}."
+}
