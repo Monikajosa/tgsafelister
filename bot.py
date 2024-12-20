@@ -1,6 +1,6 @@
 import os
 import json
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, CallbackContext
 import sqlite3
 from dotenv import load_dotenv
@@ -69,9 +69,9 @@ def safelist(update: Update, context: CallbackContext):
     safe_users = c.fetchall()
     response = language["safelist"] + "\n"
     for user in safe_users:
-        response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+        response += f"Name: {user[2]}, ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
     conn.close()
-    query.edit_message_text(text=response, reply_markup=main_menu_keyboard())
+    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN)
 
 def blacklist(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -82,62 +82,23 @@ def blacklist(update: Update, context: CallbackContext):
     scamer_users = c.fetchall()
     response = language["blacklist"] + "\n"
     for user in scamer_users:
-        response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+        response += f"Name: {user[2]}, ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
     conn.close()
-    query.edit_message_text(text=response, reply_markup=main_menu_keyboard())
+    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(), parse_mode=ParseMode.MARKDOWN)
 
 def create_report(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     query.edit_message_text(
-        "Bitte leiten Sie eine Nachricht des zu meldenden Nutzers weiter, oder teilen Sie die Benutzer-ID oder den @Benutzernamen mit:"
+        "Bitte leiten Sie eine Nachricht des zu meldenden Nutzers weiter:"
     )
 
 def request_user(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     query.edit_message_text(
-        "Bitte leiten Sie eine Nachricht des zu meldenden Nutzers weiter, oder teilen Sie die Benutzer-ID oder den @Benutzernamen mit:"
+        "Bitte leiten Sie eine Nachricht des zu meldenden Nutzers weiter:"
     )
-
-def handle_user_input(update: Update, context: CallbackContext):
-    user_input = update.message.text
-    reporter_id = update.message.from_user.id
-
-    # Prüfen, ob die Eingabe eine Benutzer-ID ist
-    if user_input.isdigit():
-        reported_id = int(user_input)
-        reported_username = None
-    # Prüfen, ob die Eingabe ein @Benutzername ist
-    elif user_input.startswith('@'):
-        reported_username = user_input[1:]  # Entfernen des '@'
-        reported_id = None
-    else:
-        update.message.reply_text("Ungültige Eingabe. Bitte geben Sie eine gültige Benutzer-ID oder einen @Benutzernamen ein.")
-        return
-
-    # Informationen über den Benutzer abrufen
-    if reported_id:
-        chat_member = context.bot.get_chat_member(chat_id=update.message.chat.id, user_id=reported_id)
-    elif reported_username:
-        chat_member = context.bot.get_chat_member(chat_id=update.message.chat.id, user_id=reported_username)
-
-    if chat_member:
-        reported_id = chat_member.user.id
-        reported_username = chat_member.user.username
-        reported_name = chat_member.user.full_name
-    else:
-        reported_name = None
-
-    context.user_data['reported_id'] = reported_id
-    context.user_data['reported_username'] = reported_username
-    context.user_data['reported_name'] = reported_name
-
-    keyboard = [
-        [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
-        [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
-    ]
-    update.message.reply_text("Bitte wählen Sie die Liste aus, zu der der Benutzer hinzugefügt werden soll:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 def handle_forwarded_message(update: Update, context: CallbackContext):
     forwarded_from = update.message.forward_from
@@ -233,9 +194,9 @@ def group_safelist(update: Update, context: CallbackContext):
     safe_users = c.fetchall()
     response = language["safelist"] + "\n"
     for user in safe_users:
-        response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+        response += f"Name: {user[2]}, ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
     conn.close()
-    update.message.reply_text(text=response)
+    update.message.reply_text(text=response, parse_mode=ParseMode.MARKDOWN)
 
 def group_blacklist(update: Update, context: CallbackContext):
     conn = get_db_connection()
@@ -244,9 +205,9 @@ def group_blacklist(update: Update, context: CallbackContext):
     scamer_users = c.fetchall()
     response = language["blacklist"] + "\n"
     for user in scamer_users:
-        response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+        response += f"Name: {user[2]}, ID: {user[1]}, Username: [@{user[3]}](https://t.me/{user[3]}), Meldungen: {user[4]}\n"
     conn.close()
-    update.message.reply_text(text=response)
+    update.message.reply_text(text=response, parse_mode=ParseMode.MARKDOWN)
 
 def main():
     updater = Updater(TOKEN, use_context=True)
@@ -272,8 +233,7 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(report_blacklist, pattern='report_blacklist'))
     dispatcher.add_handler(CallbackQueryHandler(request_user, pattern='request_user'))
 
-    # Message handler for private chat
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_user_input))
+    # Message handler for forwarded messages
     dispatcher.add_handler(MessageHandler(Filters.forwarded & Filters.chat_type.private, handle_forwarded_message))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_support_message))
 
