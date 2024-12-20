@@ -21,8 +21,9 @@ with open('en.json', 'r') as f:
 # Set default language to German
 language = lang_de
 
-# Dictionary to store user languages
+# Dictionary to store user languages and support message mapping
 user_languages = {}
+support_message_mapping = {}
 
 def get_db_connection():
     conn = sqlite3.connect('users.db')
@@ -179,12 +180,14 @@ def report_blacklist(update: Update, context: CallbackContext):
 
 def handle_support_message(update: Update, context: CallbackContext):
     message = update.message.reply_to_message
-    if message and message.forward_from:
-        original_user_id = message.forward_from.id
+    user_id = update.message.from_user.id
+    if message and message.message_id in support_message_mapping:
+        original_user_id = support_message_mapping[message.message_id]
         context.bot.send_message(chat_id=original_user_id, text=update.message.text)
     else:
         user_id = update.message.from_user.id
-        context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=f"Support-Anfrage von {user_id}:\n\n{update.message.text}")
+        sent_message = context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=f"Support-Anfrage von {user_id}:\n\n{update.message.text}")
+        support_message_mapping[sent_message.message_id] = user_id
 
 def delete_user(update: Update, context: CallbackContext):
     user_id = context.args[0]
