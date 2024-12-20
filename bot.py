@@ -15,7 +15,7 @@ SUPPORT_GROUP_ID = os.getenv("SUPPORT_GROUP_ID")
 # Load language files
 with open('de.json', 'r') as f:
     lang_de = json.load(f)
-with open('en.json', 'r') as f:  # <-- Syntaxfehler korrigiert
+with open('en.json', 'r') as f:
     lang_en = json.load(f)
 
 # Set default language to German
@@ -87,6 +87,13 @@ def blacklist(update: Update, context: CallbackContext):
     query.edit_message_text(text=response, reply_markup=main_menu_keyboard())
 
 def create_report(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(
+        "Bitte leiten Sie eine Nachricht des zu meldenden Nutzers weiter, oder teilen Sie die Benutzer-ID oder den @Benutzernamen mit:"
+    )
+
+def request_user(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     query.edit_message_text(
