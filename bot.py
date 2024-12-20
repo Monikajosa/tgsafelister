@@ -44,7 +44,9 @@ def set_language(update: Update, context: CallbackContext):
     main_menu(update, context)
 
 def start(update: Update, context: CallbackContext) -> None:
-    if update.message.chat.type == 'private':
+    chat_type = update.message.chat.type
+    print(f"Chat Type: {chat_type}")
+    if chat_type == 'private':
         update.message.reply_text(language["welcome"], reply_markup=main_menu_keyboard())
     else:
         update.message.reply_text("Dieser Befehl ist nur im privaten Chat verfügbar.")
@@ -182,15 +184,15 @@ def main():
     dispatcher = updater.dispatcher
 
     # Command handlers for private chat
-    dispatcher.add_handler(CommandHandler("start", start, filters=Filters.private))
+    dispatcher.add_handler(CommandHandler("start", start, filters=Filters.chat_type.private))
     
     # Command handlers for groups
-    dispatcher.add_handler(CommandHandler("safelist", group_safelist, filters=Filters.group))
-    dispatcher.add_handler(CommandHandler("blacklist", group_blacklist, filters=Filters.group))
+    dispatcher.add_handler(CommandHandler("safelist", group_safelist, filters=Filters.chat_type.groups))
+    dispatcher.add_handler(CommandHandler("blacklist", group_blacklist, filters=Filters.chat_type.groups))
 
     # Admin command handlers for group
-    dispatcher.add_handler(CommandHandler("del", delete_user, filters=Filters.group, pass_args=True))
-    dispatcher.add_handler(CommandHandler("send", send_message, filters=Filters.group, pass_args=True))
+    dispatcher.add_handler(CommandHandler("del", delete_user, filters=Filters.chat_type.groups, pass_args=True))
+    dispatcher.add_handler(CommandHandler("send", send_message, filters=Filters.chat_type.groups, pass_args=True))
 
     # Callback query handler
     dispatcher.add_handler(CallbackQueryHandler(main_menu, pattern='main_menu'))
@@ -203,8 +205,8 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(set_language, pattern='language_'))
 
     # Message handler for private chat
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.private, handle_report))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.private, handle_support_message))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_report))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_support_message))
 
     updater.start_polling()
     updater.idle()
