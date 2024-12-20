@@ -42,16 +42,15 @@ def start(update: Update, context: CallbackContext) -> None:
     if chat_type == 'private':
         update.message.reply_text(language["welcome"], reply_markup=main_menu_keyboard())
     else:
-        update.message.reply_text("Dieser Befehl ist nur im privaten Chat verfügbar.")
+        update.message.reply_text(language["private_chat_only"])
 
 def main_menu_keyboard():
     keyboard = [
-        [InlineKeyboardButton('Safelist', callback_data='safelist')],
-        [InlineKeyboardButton('Blacklist (Scamer)', callback_data='blacklist')],
-        [InlineKeyboardButton('Meldung erstellen', callback_data='create_report')],
-        [InlineKeyboardButton('Kontakt melden', callback_data='request_user')],
-        [InlineKeyboardButton('Sprache wählen', callback_data='choose_language')],
-        [InlineKeyboardButton('Support', callback_data='support')],
+        [InlineKeyboardButton(language['safelist_button'], callback_data='safelist')],
+        [InlineKeyboardButton(language['blacklist_button'], callback_data='blacklist')],
+        [InlineKeyboardButton(language['report_button'], callback_data='create_report')],
+        [InlineKeyboardButton(language['language_button'], callback_data='choose_language')],
+        [InlineKeyboardButton(language['support_button'], callback_data='support')],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -95,16 +94,21 @@ def blacklist(update: Update, context: CallbackContext):
 def create_report(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    query.edit_message_text(
-        "Bitte leiten Sie eine Nachricht des zu meldenden Nutzers weiter:"
-    )
+    query.edit_message_text(language["forward_message"])
 
-def request_user(update: Update, context: CallbackContext):
+def choose_language(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    query.edit_message_text(
-        "Bitte leiten Sie eine Nachricht des zu meldenden Nutzers weiter:"
-    )
+    keyboard = [
+        [InlineKeyboardButton('Deutsch', callback_data='language_de')],
+        [InlineKeyboardButton('English', callback_data='language_en')],
+    ]
+    query.edit_message_text(text=language["choose_language"], reply_markup=InlineKeyboardMarkup(keyboard))
+
+def support(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(text=language["support"])
 
 def handle_forwarded_message(update: Update, context: CallbackContext):
     forwarded_from = update.message.forward_from
@@ -118,12 +122,12 @@ def handle_forwarded_message(update: Update, context: CallbackContext):
         context.user_data['reported_name'] = reported_name
 
         keyboard = [
-            [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
-            [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
+            [InlineKeyboardButton(language['safelist_button'], callback_data='report_safelist')],
+            [InlineKeyboardButton(language['blacklist_button'], callback_data='report_blacklist')],
         ]
-        update.message.reply_text("Bitte wählen Sie die Liste aus, zu der der Benutzer hinzugefügt werden soll:", reply_markup=InlineKeyboardMarkup(keyboard))
+        update.message.reply_text(language["choose_list"], reply_markup=InlineKeyboardMarkup(keyboard))
     else:
-        update.message.reply_text("Die weitergeleitete Nachricht enthält keine gültigen Benutzerinformationen.")
+        update.message.reply_text(language["invalid_forward_message"])
 
 def report_safelist(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -139,7 +143,7 @@ def report_safelist(update: Update, context: CallbackContext):
     c.execute('UPDATE safeuser SET countsafelist = countsafelist + 1 WHERE user_id = ?', (reported_id,))
     conn.commit()
     conn.close()
-    query.edit_message_text(text=language["report_success"].format(list="Safelist"))
+    query.edit_message_text(text=language["report_success"].format(list=language["safelist_button"]))
     return main_menu(update, context)
 
 def report_blacklist(update: Update, context: CallbackContext):
@@ -156,22 +160,8 @@ def report_blacklist(update: Update, context: CallbackContext):
     c.execute('UPDATE scamer SET countscamer = countscamer + 1 WHERE user_id = ?', (reported_id,))
     conn.commit()
     conn.close()
-    query.edit_message_text(text=language["report_success"].format(list="Blacklist"))
+    query.edit_message_text(text=language["report_success"].format(list=language["blacklist_button"]))
     return main_menu(update, context)
-
-def choose_language(update: Update, context: CallbackContext):
-    query = update.callback_query
-    query.answer()
-    keyboard = [
-        [InlineKeyboardButton('Deutsch', callback_data='language_de')],
-        [InlineKeyboardButton('Englisch', callback_data='language_en')],
-    ]
-    query.edit_message_text(text=language["choose_language"], reply_markup=InlineKeyboardMarkup(keyboard))
-
-def support(update: Update, context: CallbackContext):
-    query = update.callback_query
-    query.answer()
-    query.edit_message_text(text=language["support"])
 
 def handle_support_message(update: Update, context: CallbackContext):
     message = update.message.text
@@ -186,7 +176,7 @@ def delete_user(update: Update, context: CallbackContext):
     c.execute('DELETE FROM scamer WHERE user_id = ?', (user_id,))
     conn.commit()
     conn.close()
-    context.bot.send_message(chat_id=update.message.chat_id, text=f"User mit ID {user_id} wurde gelöscht.")
+    context.bot.send_message(chat_id=update.message.chat_id, text=language["user_deleted"].format(user_id=user_id))
 
 def send_message(update: Update, context: CallbackContext):
     message = ' '.join(context.args)
@@ -243,7 +233,8 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(create_report, pattern='create_report'))
     dispatcher.add_handler(CallbackQueryHandler(report_safelist, pattern='report_safelist'))
     dispatcher.add_handler(CallbackQueryHandler(report_blacklist, pattern='report_blacklist'))
-    dispatcher.add_handler(CallbackQueryHandler(request_user, pattern='request_user'))
+    dispatcher.add_handler(CallbackQueryHandler(choose_language, pattern='choose_language'))
+    dispatcher.add_handler(CallbackQueryHandler(support, pattern='support'))
 
     # Message handler for forwarded messages
     dispatcher.add_handler(MessageHandler(Filters.forwarded & Filters.chat_type.private, handle_forwarded_message))
