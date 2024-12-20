@@ -12,16 +12,6 @@ load_dotenv()
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUPPORT_GROUP_ID = os.getenv("SUPPORT_GROUP_ID")
 
-# Connect to SQLite database
-conn = sqlite3.connect('users.db')
-c = conn.cursor()
-
-# Create tables
-c.execute('''CREATE TABLE IF NOT EXISTS safeuser (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, username TEXT, countsafelist INTEGER)''')
-c.execute('''CREATE TABLE IF NOT EXISTS scamer (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, username TEXT, countscamer INTEGER)''')
-c.execute('''CREATE TABLE IF NOT EXISTS reports (reporter_id INTEGER, reported_id INTEGER, report_type TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-conn.commit()
-
 # Load language files
 with open('de.json', 'r') as f:
     lang_de = json.load(f)
@@ -30,6 +20,10 @@ with open('en.json', 'r') as f:
 
 # Set default language to German
 language = lang_de
+
+def get_db_connection():
+    conn = sqlite3.connect('users.db')
+    return conn
 
 def set_language(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -69,21 +63,27 @@ def main_menu(update: Update, context: CallbackContext):
 def safelist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute('SELECT * FROM safeuser')
     safe_users = c.fetchall()
     response = language["safelist"] + "\n"
     for user in safe_users:
         response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+    conn.close()
     query.edit_message_text(text=response, reply_markup=main_menu_keyboard())
 
 def blacklist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute('SELECT * FROM scamer')
     scamer_users = c.fetchall()
     response = language["blacklist"] + "\n"
     for user in scamer_users:
         response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+    conn.close()
     query.edit_message_text(text=response, reply_markup=main_menu_keyboard())
 
 def create_report(update: Update, context: CallbackContext):
@@ -97,15 +97,19 @@ def handle_report(update: Update, context: CallbackContext):
     if reporter_id == int(reported_id):
         update.message.reply_text(language["self_report_error"])
         return main_menu(update, context)
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute('SELECT * FROM reports WHERE reporter_id = ? AND reported_id = ? AND timestamp >= datetime("now", "-1 day")', (reporter_id, reported_id))
     if c.fetchone():
         update.message.reply_text(language["duplicate_report_error"])
+        conn.close()
         return main_menu(update, context)
     context.user_data['reported_id'] = reported_id
     keyboard = [
         [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
         [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
     ]
+    conn.close()
     update.message.reply_text(language["create_report"], reply_markup=InlineKeyboardMarkup(keyboard))
 
 def report_safelist(update: Update, context: CallbackContext):
@@ -113,10 +117,13 @@ def report_safelist(update: Update, context: CallbackContext):
     query.answer()
     reported_id = context.user_data['reported_id']
     reporter_id = update.callback_query.from_user.id
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute('INSERT INTO reports (reporter_id, reported_id, report_type) VALUES (?, ?, ?)', (reporter_id, reported_id, 'safeuser'))
     c.execute('INSERT OR IGNORE INTO safeuser (user_id, countsafelist) VALUES (?, 0)', (reported_id,))
     c.execute('UPDATE safeuser SET countsafelist = countsafelist + 1 WHERE user_id = ?', (reported_id,))
     conn.commit()
+    conn.close()
     query.edit_message_text(text=language["report_success"].format(list="Safelist"))
     return main_menu(update, context)
 
@@ -125,10 +132,13 @@ def report_blacklist(update: Update, context: CallbackContext):
     query.answer()
     reported_id = context.user_data['reported_id']
     reporter_id = update.callback_query.from_user.id
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute('INSERT INTO reports (reporter_id, reported_id, report_type) VALUES (?, ?, ?)', (reporter_id, reported_id, 'scamer'))
     c.execute('INSERT OR IGNORE INTO scamer (user_id, countscamer) VALUES (?, 0)', (reported_id,))
     c.execute('UPDATE scamer SET countscamer = countscamer + 1 WHERE user_id = ?', (reported_id,))
     conn.commit()
+    conn.close()
     query.edit_message_text(text=language["report_success"].format(list="Blacklist"))
     return main_menu(update, context)
 
@@ -153,9 +163,12 @@ def handle_support_message(update: Update, context: CallbackContext):
 
 def delete_user(update: Update, context: CallbackContext):
     user_id = context.args[0]
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute('DELETE FROM safeuser WHERE user_id = ?', (user_id,))
     c.execute('DELETE FROM scamer WHERE user_id = ?', (user_id,))
     conn.commit()
+    conn.close()
     context.bot.send_message(chat_id=update.message.chat_id, text=f"User mit ID {user_id} wurde gelöscht.")
 
 def send_message(update: Update, context: CallbackContext):
@@ -164,19 +177,25 @@ def send_message(update: Update, context: CallbackContext):
         context.bot.send_message(chat_id=chat_id, text=message)
 
 def group_safelist(update: Update, context: CallbackContext):
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute('SELECT * FROM safeuser')
     safe_users = c.fetchall()
     response = language["safelist"] + "\n"
     for user in safe_users:
         response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+    conn.close()
     update.message.reply_text(text=response)
 
 def group_blacklist(update: Update, context: CallbackContext):
+    conn = get_db_connection()
+    c = conn.cursor()
     c.execute('SELECT * FROM scamer')
     scamer_users = c.fetchall()
     response = language["blacklist"] + "\n"
     for user in scamer_users:
         response += f"Name: {user[2]}, ID: {user[1]}, Username: {user[3]}, Meldungen: {user[4]}\n"
+    conn.close()
     update.message.reply_text(text=response)
 
 def main():
