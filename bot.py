@@ -39,7 +39,6 @@ def set_language(update: Update, context: CallbackContext):
 
 def start(update: Update, context: CallbackContext) -> None:
     chat_type = update.message.chat.type
-    print(f"Chat Type: {chat_type}")
     if chat_type == 'private':
         update.message.reply_text(language["welcome"], reply_markup=main_menu_keyboard())
     else:
@@ -86,31 +85,47 @@ def blacklist(update: Update, context: CallbackContext):
     conn.close()
     query.edit_message_text(text=response, reply_markup=main_menu_keyboard())
 
+def get_users_keyboard():
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('SELECT user_id, name FROM safeuser')
+    users = c.fetchall()
+    conn.close()
+
+    # Erstellen Sie Inline-Tastatur-Buttons für jeden Benutzer
+    keyboard = [[InlineKeyboardButton(user[1], callback_data=f'report_user_{user[0]}')] for user in users]
+    return InlineKeyboardMarkup(keyboard)
+
 def create_report(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text=language["create_report"])
+    query.edit_message_text(text="Bitte wähle den zu meldenden Benutzer aus:", reply_markup=get_users_keyboard())
 
-def handle_report(update: Update, context: CallbackContext):
-    reported_id = update.message.text
-    reporter_id = update.message.from_user.id
+def handle_report_selection(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    reported_id = query.data.split('_')[2]  # Extrahieren Sie die Benutzer-ID aus den Callback-Daten
+    reporter_id = query.from_user.id
+
     if reporter_id == int(reported_id):
-        update.message.reply_text(language["self_report_error"])
+        query.edit_message_text(text=language["self_report_error"])
         return main_menu(update, context)
+
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT * FROM reports WHERE reporter_id = ? AND reported_id = ? AND timestamp >= datetime("now", "-1 day")', (reporter_id, reported_id))
     if c.fetchone():
-        update.message.reply_text(language["duplicate_report_error"])
+        query.edit_message_text(text=language["duplicate_report_error"])
         conn.close()
         return main_menu(update, context)
+
     context.user_data['reported_id'] = reported_id
     keyboard = [
         [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
         [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
     ]
     conn.close()
-    update.message.reply_text(language["create_report"], reply_markup=InlineKeyboardMarkup(keyboard))
+    query.edit_message_text(text=language["create_report"], reply_markup=InlineKeyboardMarkup(keyboard))
 
 def report_safelist(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -220,11 +235,9 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(create_report, pattern='create_report'))
     dispatcher.add_handler(CallbackQueryHandler(report_safelist, pattern='report_safelist'))
     dispatcher.add_handler(CallbackQueryHandler(report_blacklist, pattern='report_blacklist'))
-    dispatcher.add_handler(CallbackQueryHandler(choose_language, pattern='choose_language'))
-    dispatcher.add_handler(CallbackQueryHandler(set_language, pattern='language_'))
+    dispatcher.add_handler(CallbackQueryHandler(handle_report_selection, pattern='report_user_'))
 
     # Message handler for private chat
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_report))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_support_message))
 
     updater.start_polling()
