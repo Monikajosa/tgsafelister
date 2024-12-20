@@ -70,6 +70,11 @@ def safelist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     user_id = query.from_user.id
+
+    # Ensure user language is set
+    if user_id not in user_languages:
+        user_languages[user_id] = language
+
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT * FROM safeuser')
@@ -81,12 +86,20 @@ def safelist(update: Update, context: CallbackContext):
         else:  # Kein Benutzername, stattdessen Benutzer-ID verwenden
             response += f"Name: [{user[2]}](https://t.me/{user[1]}), ID: {user[1]}, Profil: [Profil anzeigen](https://t.me/{user[1]}), Meldungen: {user[4]}\n"
     conn.close()
-    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(user_id), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    
+    # Only edit the message if the content has changed
+    if query.message.text != response:
+        query.edit_message_text(text=response, reply_markup=main_menu_keyboard(user_id), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def blacklist(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     user_id = query.from_user.id
+
+    # Ensure user language is set
+    if user_id not in user_languages:
+        user_languages[user_id] = language
+
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT * FROM scamer')
@@ -98,7 +111,10 @@ def blacklist(update: Update, context: CallbackContext):
         else:  # Kein Benutzername, stattdessen Benutzer-ID verwenden
             response += f"Name: [{user[2]}](https://t.me/{user[1]}), ID: {user[1]}, Profil: [Profil anzeigen](https://t.me/{user[1]}), Meldungen: {user[4]}\n"
     conn.close()
-    query.edit_message_text(text=response, reply_markup=main_menu_keyboard(user_id), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+
+    # Only edit the message if the content has changed
+    if query.message.text != response:
+        query.edit_message_text(text=response, reply_markup=main_menu_keyboard(user_id), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 def create_report(update: Update, context: CallbackContext):
     query = update.callback_query
