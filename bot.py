@@ -1,6 +1,6 @@
 import os
 import json
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, CallbackContext
 import sqlite3
 from dotenv import load_dotenv
@@ -49,7 +49,7 @@ def main_menu_keyboard():
         [InlineKeyboardButton('Safelist', callback_data='safelist')],
         [InlineKeyboardButton('Blacklist (Scamer)', callback_data='blacklist')],
         [InlineKeyboardButton('Meldung erstellen', callback_data='create_report')],
-        [InlineKeyboardButton('Kontakt melden', callback_data='request_contact')],
+        [InlineKeyboardButton('Kontakt melden', callback_data='request_user')],
         [InlineKeyboardButton('Sprache wählen', callback_data='choose_language')],
         [InlineKeyboardButton('Support', callback_data='support')],
     ]
@@ -86,47 +86,47 @@ def blacklist(update: Update, context: CallbackContext):
     conn.close()
     query.edit_message_text(text=response, reply_markup=main_menu_keyboard())
 
-def get_users_keyboard():
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute('SELECT user_id, name FROM safeuser')
-    users = c.fetchall()
-    conn.close()
-
-    # Erstellen Sie Inline-Tastatur-Buttons für jeden Benutzer
-    keyboard = [[InlineKeyboardButton(user[1], callback_data=f'report_user_{user[0]}')] for user in users]
-    return InlineKeyboardMarkup(keyboard)
-
-def create_report(update: Update, context: CallbackContext):
+def request_user(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-    query.edit_message_text(text="Bitte wähle den zu meldenden Benutzer aus:", reply_markup=get_users_keyboard())
+    query.edit_message_text(
+        "Bitte leiten Sie eine Nachricht des zu meldenden Nutzers weiter, oder teilen Sie die Benutzer-ID oder den @Benutzernamen mit:"
+    )
 
-def handle_report_selection(update: Update, context: CallbackContext):
-    query = update.callback_query
-    query.answer()
-    reported_id = query.data.split('_')[2]  # Extrahieren Sie die Benutzer-ID aus den Callback-Daten
-    reporter_id = query.from_user.id
+def handle_user_input(update: Update, context: CallbackContext):
+    user_input = update.message.text
+    reporter_id = update.message.from_user.id
 
-    if reporter_id == int(reported_id):
-        query.edit_message_text(text=language["self_report_error"])
-        return main_menu(update, context)
-
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute('SELECT * FROM reports WHERE reporter_id = ? AND reported_id = ? AND timestamp >= datetime("now", "-1 day")', (reporter_id, reported_id))
-    if c.fetchone():
-        query.edit_message_text(text=language["duplicate_report_error"])
-        conn.close()
-        return main_menu(update, context)
+    # Prüfen, ob die Eingabe eine Benutzer-ID ist
+    if user_input.isdigit():
+        reported_id = int(user_input)
+    # Prüfen, ob die Eingabe ein @Benutzername ist
+    elif user_input.startswith('@'):
+        reported_id = user_input
+    # Andernfalls Fehlermeldung
+    else:
+        update.message.reply_text("Ungültige Eingabe. Bitte geben Sie eine gültige Benutzer-ID oder einen @Benutzernamen ein.")
+        return
 
     context.user_data['reported_id'] = reported_id
     keyboard = [
         [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
         [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
     ]
-    conn.close()
-    query.edit_message_text(text=language["create_report"], reply_markup=InlineKeyboardMarkup(keyboard))
+    update.message.reply_text("Bitte wählen Sie die Liste aus, zu der der Benutzer hinzugefügt werden soll:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+def handle_forwarded_message(update: Update, context: CallbackContext):
+    forwarded_from = update.message.forward_from
+    if forwarded_from:
+        reported_id = forwarded_from.id
+        context.user_data['reported_id'] = reported_id
+        keyboard = [
+            [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
+            [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
+        ]
+        update.message.reply_text("Bitte wählen Sie die Liste aus, zu der der Benutzer hinzugefügt werden soll:", reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        update.message.reply_text("Die weitergeleitete Nachricht enthält keine gültigen Benutzerinformationen.")
 
 def report_safelist(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -214,43 +214,6 @@ def group_blacklist(update: Update, context: CallbackContext):
     conn.close()
     update.message.reply_text(text=response)
 
-def request_contact(update: Update, context: CallbackContext):
-    contact_button = KeyboardButton(text="Kontakt freigeben", request_contact=True)
-    contact_keyboard = ReplyKeyboardMarkup([[contact_button]], resize_keyboard=True, one_time_keyboard=True)
-    if update.message:
-        update.message.reply_text("Bitte teilen Sie einen Kontakt, den Sie melden möchten:", reply_markup=contact_keyboard)
-    else:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Bitte teilen Sie einen Kontakt, den Sie melden möchten:", reply_markup=contact_keyboard)
-
-def handle_contact(update: Update, context: CallbackContext):
-    contact = update.message.contact
-    reporter_id = update.message.from_user.id
-    reported_id = contact.user_id
-
-    if reported_id is None:
-        update.message.reply_text("Der Kontakt hat keine Benutzer-ID. Bitte stellen Sie sicher, dass der Kontakt ein registrierter Telegram-Nutzer ist.")
-        return
-
-    if reporter_id == reported_id:
-        update.message.reply_text(language["self_report_error"])
-        return main_menu(update, context)
-
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute('SELECT * FROM reports WHERE reporter_id = ? AND reported_id = ? AND timestamp >= datetime("now", "-1 day")', (reporter_id, reported_id))
-    if c.fetchone():
-        update.message.reply_text(language["duplicate_report_error"])
-        conn.close()
-        return main_menu(update, context)
-
-    context.user_data['reported_id'] = reported_id
-    keyboard = [
-        [InlineKeyboardButton('Safelist', callback_data='report_safelist')],
-        [InlineKeyboardButton('Blacklist (Scamer)', callback_data='report_blacklist')],
-    ]
-    conn.close()
-    update.message.reply_text("Bitte wählen Sie die Liste aus, zu der der Benutzer hinzugefügt werden soll:", reply_markup=InlineKeyboardMarkup(keyboard))
-
 def main():
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher
@@ -273,12 +236,12 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(create_report, pattern='create_report'))
     dispatcher.add_handler(CallbackQueryHandler(report_safelist, pattern='report_safelist'))
     dispatcher.add_handler(CallbackQueryHandler(report_blacklist, pattern='report_blacklist'))
-    dispatcher.add_handler(CallbackQueryHandler(handle_report_selection, pattern='report_user_'))
-    dispatcher.add_handler(CallbackQueryHandler(request_contact, pattern='request_contact'))
+    dispatcher.add_handler(CallbackQueryHandler(request_user, pattern='request_user'))
 
     # Message handler for private chat
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_user_input))
+    dispatcher.add_handler(MessageHandler(Filters.forwarded & Filters.chat_type.private, handle_forwarded_message))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command & Filters.chat_type.private, handle_support_message))
-    dispatcher.add_handler(MessageHandler(Filters.contact & Filters.chat_type.private, handle_contact))
 
     updater.start_polling()
     updater.idle()
