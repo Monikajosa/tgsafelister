@@ -179,7 +179,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def handle_update_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     choice = update.message.text
     if choice == "Daten aktualisieren":
-        await update.message.reply_text("Bitte geben Sie den vollständigen Namen des ausgewählten Nutzers ein:",
+        await update.message.reply_text("Bitte geben Sie den __sichtbaren__ Namen des ausgewählten Nutzers ein:",
                                         reply_markup=ReplyKeyboardRemove())
         return WAITING_FOR_FULL_NAME
     elif choice == "Erneut melden":
@@ -215,7 +215,7 @@ async def receive_full_name(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     reply_markup = ReplyKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "Bitte geben Sie den Benutzernamen des ausgewählten Nutzers ein (oder wählen Sie 'Überspringen'):",
+        "Bitte geben Sie den __@Benutzernamen__ des ausgewählten Nutzers ein (oder wählen Sie 'Überspringen'):",
         reply_markup=reply_markup)
 
     return WAITING_FOR_USERNAME
