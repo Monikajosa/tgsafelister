@@ -167,8 +167,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         if str(selected_user_id) in reported_users["scammers"]:
             user_data = reported_users["scammers"][str(selected_user_id)]
             message = (
-                f"❗😡__**Scamerliste**__😡❗\n"
-                f"❗😡__**hier solltest du vorsichtig sein**__😡❗\n\n"
+                f"__**Scamerliste**__\n\n"
                 f"**ID:** {escape_markdown(str(selected_user_id))}\n"
                 f"**Vollständiger Name:** {escape_markdown(user_data.get('full_name', 'Unbekannt'))}\n"
                 f"**Benutzername:** {escape_markdown(user_data.get('username', 'Nicht vorhanden'))}\n"
@@ -181,8 +180,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         elif str(selected_user_id) in reported_users["trusted"]:
             user_data = reported_users["trusted"][str(selected_user_id)]
             message = (
-                f"💚🦺__**Trustliste**__🦺💚\n"
-                f"💚🦺__**diesem User kann man trauen**__🦺💚\n\n"
+                f"__**Trustliste**__\n"
                 f"**ID:** {escape_markdown(str(selected_user_id))}\n"
                 f"**Vollständiger Name:** {escape_markdown(user_data.get('full_name', 'Unbekannt'))}\n"
                 f"**Benutzername:** {escape_markdown(user_data.get('username', 'Nicht vorhanden'))}\n"
