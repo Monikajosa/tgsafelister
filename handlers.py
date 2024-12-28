@@ -262,15 +262,6 @@ def escape_markdown(text):
     escape_chars = r"\_*[]()~`>#+-=|{}.!"
     return ''.join(f'\\{char}' if char in escape_chars else char for char in text)
 
-async def check_user_status(context: ContextTypes.DEFAULT_TYPE):
-    for list_type in ["scammers", "trusted"]:
-        for user_id in list(reported_users[list_type].keys()):
-            try:
-                await context.bot.get_chat(int(user_id))
-            except Exception as e:
-                logger.error(f"Fehler beim Überprüfen des Benutzers {user_id}: {e}")
-                reported_users[list_type][user_id]['account_status'] = 'Nicht verfügbar oder gelöscht'
-
     save_data()
 
 async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
