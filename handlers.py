@@ -3,7 +3,7 @@ from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardR
 from telegram.ext import ContextTypes, ConversationHandler
 import json
 from datetime import datetime
-from config import SUPPORT_GROUP_ID
+from config import SUPPORT_GROUP_ID, OWNER_ID
 
 # Logging konfigurieren
 logger = logging.getLogger(__name__)
@@ -27,6 +27,7 @@ reported_users = load_data()
 
 # Initialisiere die Datenstruktur für Zuordnung der Nachrichten-IDs zu Benutzer-IDs
 support_message_mapping = {}
+deletion_requests = {}  # Speichert Löschanforderungen, um die Kommunikation zu verfolgen
 
 def get_main_keyboard():
     keyboard = [
@@ -271,38 +272,71 @@ def escape_markdown(text):
     return ''.join(f'\\{char}' if char in escape_chars else char for char in text)
 
 async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.effective_user.id
+    deletion_requests[user_id] = True  # Markiere die Löschanfrage als aktiv
     support_message = f"Löschanfrage erhalten:\n{update.message.text}"
     sent_message = await context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=support_message)
-    support_message_mapping[sent_message.message_id] = update.effective_user.id
+    support_message_mapping[sent_message.message_id] = user_id
 
     await update.message.reply_text("Ihr Löschantrag wurde eingereicht.", reply_markup=get_main_keyboard())
     return ConversationHandler.END
 
 async def handle_support_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat_id == int(SUPPORT_GROUP_ID):
-        logger.info(f"Received message in support group: {update.message.message_id}")
+        # Nachrichten in der Support-Gruppe verarbeiten
         if update.message.reply_to_message:
             reply_to_message_id = update.message.reply_to_message.message_id
-            logger.info(f"Reply to message ID: {reply_to_message_id}")
             if reply_to_message_id in support_message_mapping:
                 original_user_id = support_message_mapping[reply_to_message_id]
-                logger.info(f"Found original user ID: {original_user_id}")
                 await context.bot.send_message(chat_id=original_user_id, text=update.message.text)
+
+                # Entfernen der Zuordnung nach Abschluss der Kommunikation
+                if update.message.text.lower().strip() == "end":
+                    del support_message_mapping[reply_to_message_id]
+                    del deletion_requests[original_user_id]  # Beende die Löschanfrage
+                    await context.bot.send_message(chat_id=original_user_id, text="Dein Ticket wurde geschlossen, für weitere Vorgehen eine neue Anfrage stellen.")
             else:
-                logger.info(f"No mapping found for reply_to_message_id: {reply_to_message_id}")
-                await context.bot.send_message(chat_id=update.message.chat_id,
-                                               text="Keine zugeordnete Support-Anfrage gefunden.")
+                await context.bot.send_message(chat_id=update.message.chat_id, text="Keine zugeordnete Support-Anfrage gefunden.")
         else:
-            logger.info("No reply_to_message found in update.")
-            await context.bot.send_message(chat_id=update.message.chat_id,
-                                           text="Keine zugeordnete Support-Anfrage gefunden.")
+            await context.bot.send_message(chat_id=update.message.chat_id, text="Keine zugeordnete Support-Anfrage gefunden.")
     else:
+        # Nachrichten von Benutzern außerhalb der Support-Gruppe verarbeiten
         user_id = update.message.from_user.id
-        sent_message = await context.bot.send_message(chat_id=SUPPORT_GROUP_ID,
-                                                      text=f"Support-Anfrage von {user_id}:\n\n{update.message.text}")
-        logger.info(f"Original message ID: {sent_message.message_id}, User ID: {user_id}")
-        support_message_mapping[sent_message.message_id] = user_id
+        if user_id in deletion_requests and deletion_requests[user_id]:
+            sent_message = await context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=f"Support-Anfrage von {user_id}:\n\n{update.message.text}")
+            support_message_mapping[sent_message.message_id] = user_id
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
     await update.message.reply_text("Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.")
+
+async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        user_id = update.effective_user.id
+        if str(user_id) != OWNER_ID:
+            await update.message.reply_text("Sie haben keine Berechtigung, diese Aktion auszuführen.")
+            return
+
+        command, user_id_to_delete = update.message.text.split()
+        user_id_to_delete = user_id_to_delete.strip()
+
+        user_deleted = False
+
+        if user_id_to_delete in reported_users["scammers"]:
+            del reported_users["scammers"][user_id_to_delete]
+            user_deleted = True
+
+        if user_id_to_delete in reported_users["trusted"]:
+            del reported_users["trusted"][user_id_to_delete]
+            user_deleted = True
+
+        if user_deleted:
+            save_data()
+            await update.message.reply_text(f"Benutzer {user_id_to_delete} wurde erfolgreich aus den Listen gelöscht.")
+            logger.info(f"Benutzer {user_id_to_delete} wurde erfolgreich gelöscht.")
+        else:
+            await update.message.reply_text("Benutzer-ID nicht in den Listen gefunden.")
+            logger.info(f"Benutzer-ID {user_id_to_delete} nicht in den Listen gefunden.")
+    except ValueError:
+        await update.message.reply_text("Ungültiges Format. Bitte verwenden Sie /del <user_id>.")
+        logger.error("Ungültiges Format für /del Befehl.")
