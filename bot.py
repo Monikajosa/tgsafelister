@@ -1,7 +1,7 @@
 import logging
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
 from config import TOKEN, SUPPORT_GROUP_ID
-from handlers import start, handle_main_menu, user_selected, check_user, handle_update_choice, receive_full_name, receive_username, receive_reason, cancel, receive_deletion_info, handle_support_message, error_handler, check_user_status
+from handlers import start, handle_main_menu, user_selected, check_user, handle_update_choice, receive_full_name, receive_username, receive_reason, cancel, receive_deletion_info, handle_support_message, error_handler
 from handlers import SELECTING_USER, WAITING_FOR_FULL_NAME, WAITING_FOR_USERNAME, WAITING_FOR_REASON, UPDATING_USER, WAITING_FOR_DELETION_INFO, CHECKING_LIST
 
 # Logging konfigurieren
