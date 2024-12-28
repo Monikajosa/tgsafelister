@@ -8,12 +8,6 @@ from config import SUPPORT_GROUP_ID
 # Logging konfigurieren
 logger = logging.getLogger(__name__)
 
-# Datenstruktur für gemeldete Benutzer
-reported_users = {
-    "scammers": {},
-    "trusted": {}
-}
-
 # Zustände für den ConversationHandler
 SELECTING_USER, WAITING_FOR_FULL_NAME, WAITING_FOR_USERNAME, WAITING_FOR_REASON, UPDATING_USER, WAITING_FOR_DELETION_INFO, CHECKING_LIST = range(7)
 
@@ -30,9 +24,6 @@ def save_data():
 
 # Laden der Daten beim Start des Bots
 reported_users = load_data()
-
-# Datenstruktur für Zuordnung der Nachrichten-IDs zu Benutzer-IDs
-support_message_mapping = {}
 
 def get_main_keyboard():
     keyboard = [
@@ -68,6 +59,16 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 async def start_report(update: Update, context: ContextTypes.DEFAULT_TYPE, report_type: str) -> int:
     context.user_data['report_type'] = report_type
+    other_report_type = "trusted" if report_type == "scammers" else "scammers"
+    
+    # Überprüfen, ob der Benutzer bereits in der anderen Liste vorhanden ist
+    if str(update.message.from_user.id) in reported_users[other_report_type]:
+        await update.message.reply_text(
+            f"Der Benutzer ist bereits in der {other_report_type[:-1]}-Liste gemeldet und kann nicht erneut gemeldet werden.",
+            reply_markup=get_main_keyboard()
+        )
+        return ConversationHandler.END
+    
     button = KeyboardButton(
         text="Nutzer auswählen",
         request_user=KeyboardButtonRequestUser(
@@ -105,6 +106,15 @@ async def user_selected(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         selected_user_id = user_shared.user_id
         context.user_data['reported_user_id'] = selected_user_id
         report_type = context.user_data['report_type']
+        other_report_type = "trusted" if report_type == "scammers" else "scammers"
+
+        # Überprüfen, ob der Benutzer bereits in der anderen Liste vorhanden ist
+        if str(selected_user_id) in reported_users[other_report_type]:
+            await update.message.reply_text(
+                f"Der Benutzer ist bereits in der {other_report_type[:-1]}-Liste gemeldet und kann nicht erneut gemeldet werden.",
+                reply_markup=get_main_keyboard()
+            )
+            return ConversationHandler.END
 
         if str(selected_user_id) in reported_users[report_type]:
             existing_data = reported_users[report_type][str(selected_user_id)]
@@ -197,7 +207,6 @@ async def receive_full_name(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     current_time = datetime.now().isoformat()
     if str(reported_user_id) not in reported_users[report_type]:
-        # Initialisiere den Zähler auf 1, wenn der Benutzer zum ersten Mal gemeldet wird
         reported_users[report_type][str(reported_user_id)] = {
             "link": f"tg://user?id={reported_user_id}",
             "full_name": full_name,
@@ -206,7 +215,7 @@ async def receive_full_name(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "reported_by": update.effective_user.id,
             "first_reported_at": current_time,
             "last_reported_at": current_time,
-            "count": 0  # Zähler auf 0 initialisieren
+            "count": 0
         }
 
     keyboard = [
@@ -221,11 +230,7 @@ async def receive_full_name(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return WAITING_FOR_USERNAME
 
 async def receive_username(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text == "Überspringen":
-        username = "Nicht vorhanden"
-    else:
-        username = update.message.text or "Nicht vorhanden"
-
+    username = "Nicht vorhanden" if update.message.text == "Überspringen" else update.message.text or "Nicht vorhanden"
     reported_user_id = context.user_data['reported_user_id']
     report_type = context.user_data['report_type']
 
@@ -243,7 +248,7 @@ async def receive_reason(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if str(reported_user_id) in reported_users[report_type]:
         reported_users[report_type][str(reported_user_id)]["reason"] = reason
         reported_users[report_type][str(reported_user_id)]["last_reported_at"] = datetime.now().isoformat()
-        reported_users[report_type][str(reported_user_id)]["count"] += 1  # Erhöhe den Zähler um 1
+        reported_users[report_type][str(reported_user_id)]["count"] += 1
 
     await update.message.reply_text(f"Benutzer wurde erfolgreich als {report_type[:-1]} gemeldet.",
                                     reply_markup=get_main_keyboard())
@@ -261,8 +266,6 @@ def escape_markdown(text):
     """Escapes markdown special characters."""
     escape_chars = r"\_*[]()~`>#+-=|{}.!"
     return ''.join(f'\\{char}' if char in escape_chars else char for char in text)
-
-    save_data()
 
 async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     support_message = f"Löschanfrage erhalten:\n{update.message.text}"
