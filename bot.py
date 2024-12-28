@@ -53,9 +53,6 @@ def main() -> None:
     application.add_handler(deletion_conv_handler)
     application.add_handler(MessageHandler(filters.ALL, handle_support_message))
 
-    job_queue = application.job_queue
-    job_queue.run_repeating(check_user_status, interval=86400)
-
     # Register the error handler
     application.add_error_handler(error_handler)
 
