@@ -9,7 +9,7 @@ from config import SUPPORT_GROUP_ID
 logger = logging.getLogger(__name__)
 
 # Zustände für den ConversationHandler
-SELECTING_USER, WAITING_FOR_FULL_NAME, WAITING_FOR_USERNAME, WAITING_FOR_REASON, UPDATING_USER, WAITING_FOR_DELETION_INFO, CHECKING_LIST = range(7)
+SELECTING_USER, WAITING_FOR_FULL_NAME, WAITING_FOR_USERNAME, WAITING_FOR_REASON, UPDATING_USER, WAITING_FOR_DELETION_INFO, CHECKING_LIST, WAITING_FOR_DELETION_ID = range(8)
 
 def load_data():
     try:
@@ -24,6 +24,9 @@ def save_data():
 
 # Laden der Daten beim Start des Bots
 reported_users = load_data()
+
+# Initialisiere die Datenstruktur für Zuordnung der Nachrichten-IDs zu Benutzer-IDs
+support_message_mapping = {}
 
 def get_main_keyboard():
     keyboard = [
