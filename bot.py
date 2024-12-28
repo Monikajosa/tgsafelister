@@ -1,7 +1,7 @@
 import logging
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
-from config import TOKEN, SUPPORT_GROUP_ID
-from handlers import start, handle_main_menu, user_selected, check_user, handle_update_choice, receive_full_name, receive_username, receive_reason, cancel, receive_deletion_info, handle_support_message, error_handler
+from config import TOKEN, SUPPORT_GROUP_ID, OWNER_ID
+from handlers import start, handle_main_menu, user_selected, check_user, handle_update_choice, receive_full_name, receive_username, receive_reason, cancel, receive_deletion_info, handle_support_message, error_handler, delete_user
 from handlers import SELECTING_USER, WAITING_FOR_FULL_NAME, WAITING_FOR_USERNAME, WAITING_FOR_REASON, UPDATING_USER, WAITING_FOR_DELETION_INFO, CHECKING_LIST
 
 # Logging konfigurieren
@@ -51,7 +51,8 @@ def main() -> None:
     application.add_handler(report_conv_handler)
     application.add_handler(check_list_conv_handler)
     application.add_handler(deletion_conv_handler)
-    application.add_handler(MessageHandler(filters.ALL, handle_support_message))
+    application.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handle_support_message))
+    application.add_handler(CommandHandler("del", delete_user))
 
     # Register the error handler
     application.add_error_handler(error_handler)
