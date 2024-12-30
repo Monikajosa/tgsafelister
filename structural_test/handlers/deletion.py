@@ -1,8 +1,12 @@
 from telegram import Update
-from telegram.ext import ContextTypes
-from .utils import save_data, load_data
+from telegram.ext import ContextTypes, ConversationHandler
+from .utils import save_data, load_data, get_main_keyboard
+import logging
 
+logger = logging.getLogger(__name__)
 reported_users = load_data()
+
+WAITING_FOR_DELETION_INFO = range(1)
 
 async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
@@ -34,3 +38,27 @@ async def delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     except ValueError:
         await update.message.reply_text("Ungültiges Format. Bitte verwenden Sie /del <user_id>.")
         logger.error("Ungültiges Format für /del Befehl.")
+
+async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id_to_delete = update.message.text.strip()
+    user_deleted = False
+
+    if user_id_to_delete in reported_users["scammers"]:
+        del reported_users["scammers"][user_id_to_delete]
+        user_deleted = True
+
+    if user_id_to_delete in reported_users["trusted"]:
+        del reported_users["trusted"][user_id_to_delete]
+        user_deleted = True
+
+    if user_deleted:
+        save_data()
+        await update.message.reply_text(f"Benutzer {user_id_to_delete} wurde erfolgreich aus den Listen gelöscht.",
+                                        reply_markup=get_main_keyboard())
+        logger.info(f"Benutzer {user_id_to_delete} wurde erfolgreich gelöscht.")
+    else:
+        await update.message.reply_text("Benutzer-ID nicht in den Listen gefunden.",
+                                        reply_markup=get_main_keyboard())
+        logger.info(f"Benutzer-ID {user_id_to_delete} nicht in den Listen gefunden.")
+    
+    return ConversationHandler.END
