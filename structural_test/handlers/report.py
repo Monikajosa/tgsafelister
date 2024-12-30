@@ -148,7 +148,9 @@ async def receive_reason(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         reported_users[report_type][str(reported_user_id)]["last_reported_at"] = datetime.now().isoformat()
         reported_users[report_type][str(reported_user_id)]["count"] += 1
 
+    print(f"DEBUG: Daten vor dem Speichern: {reported_users}")  # Debug-Ausgabe
     save_data(reported_users)  # Daten speichern
+    print(f"DEBUG: Daten gespeichert: {reported_users}")  # Debug-Ausgabe
 
     await update.message.reply_text(f"Benutzer wurde erfolgreich als {report_type[:-1]} gemeldet.",
                                     reply_markup=get_main_keyboard())
