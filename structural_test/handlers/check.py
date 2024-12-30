@@ -1,7 +1,6 @@
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, KeyboardButtonRequestUser
 from telegram.ext import ContextTypes, ConversationHandler
-from .utils import load_data, get_main_keyboard
-from telegram.helpers import escape_markdown
+from .utils import load_data, get_main_keyboard, escape_markdown
 
 reported_users = load_data()
 
@@ -27,6 +26,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_shared = update.message.user_shared
     if user_shared:
         selected_user_id = user_shared.user_id
+        print(f"DEBUG: Überprüfe Benutzer-ID: {selected_user_id}")  # Debug-Ausgabe
 
         if str(selected_user_id) in reported_users["scammers"]:
             user_data = reported_users["scammers"][str(selected_user_id)]
