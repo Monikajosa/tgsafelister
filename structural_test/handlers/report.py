@@ -132,7 +132,7 @@ async def receive_reason(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(f"Benutzer wurde erfolgreich als {report_type[:-1]} gemeldet.",
                                     reply_markup=get_main_keyboard())
 
-    save_data()
+    save_data(reported_users)
 
     return ConversationHandler.END
 
