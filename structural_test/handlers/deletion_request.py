@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 # Zustände für den ConversationHandler
 WAITING_FOR_DELETION_INFO = range(1)
 
-# Initialisiere die Datenstruktur für Zuordnung der Nachrichten-IDs zu Benutzer-IDs
+# Initialisiere die Datenstrukturen
+ticket_counter = 1  # Zähler für die Ticketnummern
 support_message_mapping = {}
-deletion_requests = {}
 
 async def request_deletion(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
@@ -26,11 +26,15 @@ async def request_deletion(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return WAITING_FOR_DELETION_INFO
 
 async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_id = update.effective_user.id
-    deletion_requests[user_id] = True  # Markiere die Löschanfrage als aktiv
-    support_message = f"Löschanfrage erhalten:\n{update.message.text}"
-    sent_message = await context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=support_message)
-    support_message_mapping[sent_message.message_id] = user_id  # Ordne die Nachricht der Benutzer-ID zu
+    global ticket_counter  # Verwende den globalen Ticketzähler
 
-    await update.message.reply_text("Ihr Löschantrag wurde eingereicht.", reply_markup=get_main_keyboard())
+    user_id = update.effective_user.id
+    support_message = f"Löschanfrage erhalten [Ticket #{ticket_counter}]:\n{update.message.text}"
+    sent_message = await context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=support_message)
+    support_message_mapping[ticket_counter] = {
+        'user_id': user_id,
+        'support_message_id': sent_message.message_id
+    }
+    await update.message.reply_text(f"Ihr Löschantrag wurde als Ticket #{ticket_counter} eingereicht.", reply_markup=get_main_keyboard())
+    ticket_counter += 1  # Inkrementiere die Ticketnummer für die nächste Anfrage
     return ConversationHandler.END
