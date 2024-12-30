@@ -3,6 +3,7 @@ from telegram import Update, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 from dotenv import load_dotenv
 import os
+from .utils import get_main_keyboard  # Sicherstellen, dass importiert wird
 
 # Laden der Umgebungsvariablen aus der .env Datei
 load_dotenv()
