@@ -1,7 +1,9 @@
+import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 from config import SUPPORT_GROUP_ID
 
+# Initialisiere die Datenstruktur für Zuordnung der Nachrichten-IDs zu Benutzer-IDs
 support_message_mapping = {}
 deletion_requests = {}
 
