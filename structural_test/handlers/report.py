@@ -1,6 +1,8 @@
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
-from .utils import load_data, save_data
+from .utils import load_data, save_data, get_main_keyboard  # Stellen Sie sicher, dass diese Funktionen in utils.py definiert sind
+from datetime import datetime
+from telegram.helpers import escape_markdown
 
 reported_users = load_data()
 
@@ -134,4 +136,22 @@ async def receive_reason(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     save_data()
 
+    return ConversationHandler.END
+
+async def handle_update_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    choice = update.message.text
+    if choice == "Daten aktualisieren":
+        await update.message.reply_text("Bitte geben Sie den vollständigen Namen des Nutzers ein:",
+                                        reply_markup=ReplyKeyboardRemove())
+        return WAITING_FOR_FULL_NAME
+    elif choice == "Erneut melden":
+        await update.message.reply_text("Bitte geben Sie den Meldegrund an:", reply_markup=ReplyKeyboardRemove())
+        return WAITING_FOR_REASON
+    else:
+        await update.message.reply_text("Ungültige Auswahl. Bitte versuchen Sie es erneut.",
+                                        reply_markup=get_main_keyboard())
+        return ConversationHandler.END
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("Meldung abgebrochen.", reply_markup=get_main_keyboard())
     return ConversationHandler.END
