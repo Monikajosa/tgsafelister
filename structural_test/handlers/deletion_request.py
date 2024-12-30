@@ -30,7 +30,7 @@ async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TY
     deletion_requests[user_id] = True  # Markiere die Löschanfrage als aktiv
     support_message = f"Löschanfrage erhalten:\n{update.message.text}"
     sent_message = await context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=support_message)
-    support_message_mapping[sent_message.message_id] = user_id
+    support_message_mapping[sent_message.message_id] = user_id  # Ordne die Nachricht der Benutzer-ID zu
 
     await update.message.reply_text("Ihr Löschantrag wurde eingereicht.", reply_markup=get_main_keyboard())
     return ConversationHandler.END
