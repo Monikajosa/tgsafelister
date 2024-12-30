@@ -4,13 +4,13 @@ from .utils import load_data, save_data, get_main_keyboard
 from datetime import datetime
 from telegram.helpers import escape_markdown
 
-reported_users = load_data()
-
 SELECTING_USER, WAITING_FOR_FULL_NAME, WAITING_FOR_USERNAME, WAITING_FOR_REASON, UPDATING_USER = range(5)
 
 async def start_report(update: Update, context: ContextTypes.DEFAULT_TYPE, report_type: str) -> int:
     context.user_data['report_type'] = report_type
     other_report_type = "trusted" if report_type == "scammers" else "scammers"
+    
+    reported_users = load_data()  # Daten neu laden
     
     if str(update.message.from_user.id) in reported_users[other_report_type]:
         await update.message.reply_text(
@@ -41,6 +41,8 @@ async def user_selected(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         context.user_data['reported_user_id'] = selected_user_id
         report_type = context.user_data['report_type']
         other_report_type = "trusted" if report_type == "scammers" else "scammers"
+
+        reported_users = load_data()  # Daten neu laden
 
         if str(selected_user_id) in reported_users[other_report_type]:
             await update.message.reply_text(
@@ -84,6 +86,7 @@ async def receive_full_name(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     reported_user_id = context.user_data['reported_user_id']
     report_type = context.user_data['report_type']
 
+    reported_users = load_data()  # Daten neu laden
     current_time = datetime.now().isoformat()
     if str(reported_user_id) not in reported_users[report_type]:
         reported_users[report_type][str(reported_user_id)] = {
@@ -113,6 +116,21 @@ async def receive_username(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     reported_user_id = context.user_data['reported_user_id']
     report_type = context.user_data['report_type']
 
+    reported_users = load_data()  # Daten neu laden
+
+    # Sicherstellen, dass der Benutzer initialisiert ist, bevor auf den 'username'-Schlüssel zugegriffen wird
+    if str(reported_user_id) not in reported_users[report_type]:
+        reported_users[report_type][str(reported_user_id)] = {
+            "link": f"tg://user?id={reported_user_id}",
+            "full_name": "",
+            "username": "",
+            "reason": "",
+            "reported_by": update.effective_user.id,
+            "first_reported_at": "",
+            "last_reported_at": "",
+            "count": 0
+        }
+
     reported_users[report_type][str(reported_user_id)]["username"] = username
 
     await update.message.reply_text("Bitte geben Sie nun den Meldegrund an:", reply_markup=ReplyKeyboardRemove())
@@ -124,6 +142,7 @@ async def receive_reason(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     reported_user_id = context.user_data['reported_user_id']
     report_type = context.user_data['report_type']
 
+    reported_users = load_data()  # Daten neu laden
     if str(reported_user_id) in reported_users[report_type]:
         reported_users[report_type][str(reported_user_id)]["reason"] = reason
         reported_users[report_type][str(reported_user_id)]["last_reported_at"] = datetime.now().isoformat()
