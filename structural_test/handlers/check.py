@@ -27,9 +27,11 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         print(f"DEBUG: Überprüfe Benutzer-ID: {selected_user_id}")  # Debug-Ausgabe
 
         reported_users = load_data()  # Daten neu laden
+        print(f"DEBUG: Geladene Daten: {reported_users}")  # Debug-Ausgabe
 
         if str(selected_user_id) in reported_users["scammers"]:
             user_data = reported_users["scammers"][str(selected_user_id)]
+            print(f"DEBUG: Benutzer gefunden in Scammerliste: {user_data}")  # Debug-Ausgabe
             message = (
                 f"__**⚠️ Scammerliste ⚠️**__\n\n"
                 f"**ID:** {escape_markdown(str(selected_user_id))}\n"
@@ -43,6 +45,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             await update.message.reply_text(message, parse_mode='MarkdownV2', reply_markup=get_main_keyboard())
         elif str(selected_user_id) in reported_users["trusted"]:
             user_data = reported_users["trusted"][str(selected_user_id)]
+            print(f"DEBUG: Benutzer gefunden in Trustliste: {user_data}")  # Debug-Ausgabe
             message = (
                 f"__**✅ Trustliste ✅**__\n"
                 f"**ID:** {escape_markdown(str(selected_user_id))}\n"
@@ -55,6 +58,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             )
             await update.message.reply_text(message, parse_mode='MarkdownV2', reply_markup=get_main_keyboard())
         else:
+            print(f"DEBUG: Benutzer nicht in Listen gefunden")  # Debug-Ausgabe
             await update.message.reply_text("Dieser Nutzer ist nicht in der Scammerliste oder Trustliste.",
                                             reply_markup=get_main_keyboard())
         return ConversationHandler.END
