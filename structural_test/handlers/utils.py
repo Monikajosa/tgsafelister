@@ -8,7 +8,7 @@ def load_data():
     except (FileNotFoundError, json.JSONDecodeError):
         return {"scammers": {}, "trusted": {}}
 
-def save_data():
+def save_data(reported_users):
     with open('reported_users.json', 'w') as f:
         json.dump(reported_users, f, indent=4)
 
