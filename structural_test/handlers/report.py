@@ -1,6 +1,6 @@
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButtonRequestUser
 from telegram.ext import ContextTypes, ConversationHandler
-from .utils import load_data, save_data, get_main_keyboard  # Stellen Sie sicher, dass diese Funktionen in utils.py definiert sind
+from .utils import load_data, save_data, get_main_keyboard
 from datetime import datetime
 from telegram.helpers import escape_markdown
 
@@ -12,7 +12,6 @@ async def start_report(update: Update, context: ContextTypes.DEFAULT_TYPE, repor
     context.user_data['report_type'] = report_type
     other_report_type = "trusted" if report_type == "scammers" else "scammers"
     
-    # Überprüfen, ob der Benutzer bereits in der anderen Liste vorhanden ist
     if str(update.message.from_user.id) in reported_users[other_report_type]:
         await update.message.reply_text(
             f"Der Benutzer ist bereits in der {other_report_type[:-1]}-Liste gemeldet und kann nicht erneut gemeldet werden.",
@@ -43,7 +42,6 @@ async def user_selected(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         report_type = context.user_data['report_type']
         other_report_type = "trusted" if report_type == "scammers" else "scammers"
 
-        # Überprüfen, ob der Benutzer bereits in der anderen Liste vorhanden ist
         if str(selected_user_id) in reported_users[other_report_type]:
             await update.message.reply_text(
                 f"Der Benutzer ist bereits in der {other_report_type[:-1]}-Liste gemeldet und kann nicht erneut gemeldet werden.",
