@@ -1,6 +1,6 @@
 import logging
 from telegram import Update, ReplyKeyboardRemove
-from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
+from telegram.ext import ContextTypes, CallbackContext, ConversationHandler, CommandHandler, MessageHandler, filters
 from dotenv import load_dotenv
 import os
 import json
@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 WAITING_FOR_DELETION_INFO = range(1)
 
 # Initialisiere die Datenstrukturen
-ticket_counter = 1  # Zähler für die Ticketnummern
 SUPPORT_MAPPING_FILE = 'support_message_mapping.json'
+TICKET_COUNTER_FILE = 'ticket_counter.json'
 
 # Funktion zum Laden der Support-Nachrichten-Zuordnung
 def load_support_message_mapping():
@@ -51,8 +51,28 @@ def save_support_message_mapping(mapping):
     except Exception as e:
         logging.error(f"Fehler beim Speichern der support_message_mapping.json: {e}")
 
-# Laden der Support-Nachrichten-Zuordnung beim Start
+# Funktion zum Laden des Ticketzählers
+def load_ticket_counter():
+    if os.path.exists(TICKET_COUNTER_FILE):
+        try:
+            with open(TICKET_COUNTER_FILE, 'r') as f:
+                return json.load(f).get('ticket_counter', 1)
+        except Exception as e:
+            logging.error(f"Fehler beim Laden der ticket_counter.json: {e}")
+            return 1
+    return 1
+
+# Funktion zum Speichern des Ticketzählers
+def save_ticket_counter(counter):
+    try:
+        with open(TICKET_COUNTER_FILE, 'w') as f:
+            json.dump({'ticket_counter': counter}, f, indent=4)
+    except Exception as e:
+        logging.error(f"Fehler beim Speichern der ticket_counter.json: {e}")
+
+# Laden der Support-Nachrichten-Zuordnung und des Ticketzählers beim Start
 support_message_mapping = load_support_message_mapping()
+ticket_counter = load_ticket_counter()
 
 async def request_deletion(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
@@ -62,7 +82,10 @@ async def request_deletion(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return WAITING_FOR_DELETION_INFO
 
 async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    global ticket_counter  # Verwende den globalen Ticketzähler
+    global support_message_mapping  # Verwende die globale Zuordnung
+
+    # Ticketzähler unmittelbar vor der Erstellung eines neuen Tickets laden
+    ticket_counter = load_ticket_counter()
 
     user_id = update.effective_user.id
     reason = update.message.text
@@ -83,10 +106,31 @@ async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TY
     
     # Speichern der Änderungen in der Datei
     save_support_message_mapping(support_message_mapping)
+
+    # Inkrementiere und speichere den Ticketzähler
+    ticket_counter += 1
+    save_ticket_counter(ticket_counter)
     
-    await update.message.reply_text(f"Ihr Löschantrag wurde als Ticket #{ticket_counter} eingereicht.", reply_markup=get_main_keyboard())
-    ticket_counter += 1  # Inkrementiere die Ticketnummer für die nächste Anfrage
+    await update.message.reply_text(f"Ihr Löschantrag wurde als Ticket #{ticket_counter - 1} eingereicht.", reply_markup=get_main_keyboard())
     return ConversationHandler.END
+
+async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    global support_message_mapping  # Verwende die globale Zuordnung
+
+    user_id = update.effective_user.id
+    open_ticket_number = None
+    for ticket_number, data in support_message_mapping.items():
+        if data['user_id'] == user_id:
+            open_ticket_number = ticket_number
+            break
+
+    if open_ticket_number is not None:
+        support_message = f"Nachricht von Benutzer {user_id} [Ticket #{open_ticket_number}]:\n\n{update.message.text}"
+        sent_message = await context.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=support_message)
+        support_message_mapping[open_ticket_number]['support_message_id'] = sent_message.message_id
+        save_support_message_mapping(support_message_mapping)
+    else:
+        await context.bot.send_message(chat_id=update.message.chat_id, text="Support-Anfragen können nur über den Button 'Löschung beantragen' eingereicht werden.")
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Löschantrag abgebrochen.", reply_markup=get_main_keyboard())
@@ -99,3 +143,9 @@ deletion_conv_handler = ConversationHandler(
     },
     fallbacks=[CommandHandler("cancel", cancel)]
 )
+
+user_message_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_message)
+
+async def error_handler(update: Update, context: CallbackContext) -> None:
+    logger.error(msg="Exception while handling an update:", exc_info=context.error)
+    await update.message.reply_text("Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.")
