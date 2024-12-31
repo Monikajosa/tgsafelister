@@ -1,4 +1,3 @@
-**Ordnerstruktur**
 
 tgsafelister/
 ├── bot.py
@@ -17,7 +16,7 @@ tgsafelister/
 ├── handlers.py
 ├── requirements.txt
 ├── .env
-```
+
 
 **Erläuterungen:**
 
