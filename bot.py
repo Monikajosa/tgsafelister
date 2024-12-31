@@ -10,6 +10,9 @@ from handlers.utils import get_main_keyboard
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Timeout-Wert
+TIMEOUT = 60  # Timeout-Wert in Sekunden
+
 def main() -> None:
     global support_message_mapping, deletion_requests
     support_message_mapping = {}
@@ -38,7 +41,7 @@ def main() -> None:
         ],
         states={
             CHECKING_LIST: [MessageHandler(filters.StatusUpdate.USER_SHARED, check_user)]
-        },
+        ],
         fallbacks=[CommandHandler("cancel", cancel)]
     )
 
