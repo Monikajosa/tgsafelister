@@ -20,6 +20,10 @@ def save_data(data):
     with open('reported_users.json', 'w') as f:
         json.dump(data, f, indent=4)
 
+# Funktion zum Zählen der Gesamtmeldungen
+def get_total_reports(data):
+    return sum(user_data['count'] for list_type in data for user_data in data[list_type].values())
+
 # Funktion zum Abrufen der Haupttastatur
 def get_main_keyboard():
     keyboard = [
@@ -181,7 +185,8 @@ async def receive_reason(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     save_data(reported_users)  # Daten speichern
     print(f"DEBUG: Daten gespeichert: {reported_users}")
 
-    await update.message.reply_text(f"Benutzer wurde erfolgreich als {report_type[:-1]} gemeldet.",
+    total_reports = get_total_reports(reported_users)
+    await update.message.reply_text(f"Benutzer wurde erfolgreich als {report_type[:-1]} gemeldet. Es gibt jetzt insgesamt {total_reports} Meldungen.",
                                     reply_markup=get_main_keyboard())
 
     return ConversationHandler.END
