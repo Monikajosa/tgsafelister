@@ -1,5 +1,5 @@
 import logging
-from telegram import Update, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes, CallbackContext, ConversationHandler, CommandHandler, MessageHandler, filters
 from dotenv import load_dotenv
 import os
@@ -75,14 +75,23 @@ support_message_mapping = load_support_message_mapping()
 ticket_counter = load_ticket_counter()
 
 async def request_deletion(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # Erstellung des Abbrechen-Buttons
+    keyboard = [[KeyboardButton("Abbrechen")]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+    
     await update.message.reply_text(
         "Bitte geben Sie die ID und den Grund für die Löschung in folgendem Format ein:\n\nID: Grund",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=reply_markup
     )
     return WAITING_FOR_DELETION_INFO
 
 async def receive_deletion_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     global support_message_mapping  # Verwende die globale Zuordnung
+
+    # Überprüfen, ob der Benutzer "Abbrechen" gewählt hat
+    if update.message.text.lower().strip() == "abbrechen":
+        await update.message.reply_text("Löschantrag abgebrochen.", reply_markup=get_main_keyboard())
+        return ConversationHandler.END
 
     # Ticketzähler unmittelbar vor der Erstellung eines neuen Tickets laden
     ticket_counter = load_ticket_counter()
@@ -141,7 +150,7 @@ deletion_conv_handler = ConversationHandler(
     states={
         WAITING_FOR_DELETION_INFO: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_deletion_info)],
     },
-    fallbacks=[CommandHandler("cancel", cancel)]
+    fallbacks=[CommandHandler("cancel", cancel), MessageHandler(filters.Regex('^(Abbrechen)$'), cancel)]
 )
 
 user_message_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_message)
