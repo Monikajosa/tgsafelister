@@ -2,6 +2,10 @@
 tgsafelister/
 ├── bot.py
 ├── config.py
+├── handlers.py
+├── requirements.txt
+├── .env
+├── README.md
 ├── handlers/
 │   ├── __init__.py
 │   ├── start.py
@@ -13,10 +17,6 @@ tgsafelister/
 │   ├── support.py
 │   ├── utils.py
 │   ├── deletion_request.py
-├── handlers.py
-├── requirements.txt
-├── .env
-├── README.md
 ```
 
 
