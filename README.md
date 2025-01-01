@@ -1,4 +1,4 @@
-
+```
 tgsafelister/
 ├── bot.py
 ├── config.py
@@ -16,6 +16,7 @@ tgsafelister/
 ├── handlers.py
 ├── requirements.txt
 ├── .env
+```
 
 
 **Erläuterungen:**
