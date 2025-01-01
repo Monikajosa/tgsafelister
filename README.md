@@ -16,6 +16,7 @@ tgsafelister/
 ├── handlers.py
 ├── requirements.txt
 ├── .env
+├── README.md
 ```
 
 
